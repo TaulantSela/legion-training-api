@@ -61,6 +61,27 @@
         "The first three rounds might feel terrible, but stick to it",
         "RX Weights: 205lb/145lb"
       ]
+    },
+    {
+      "name": "Core Bustesdadsdsr",
+      "equipment": [
+        "rack",
+        "barbell",
+        "abmat"
+      ],
+      "exercises": [
+        "15 toes to bars",
+        "10 thrusters",
+        "30 abmat sit-ups"
+      ],
+      "trainerTips": [
+        "Split your toes to bars into two sets maximum",
+        "Go unbroken on the thrusters",
+        "Take the abmat sit-ups as a chance to normalize your breath"
+      ],
+      "id": "bbd1a04b-2c08-4e6a-af6b-c80b739b9fa5",
+      "createdAt": "10/21/2022, 11:37:12 PM",
+      "updatedAt": "10/21/2022, 11:37:12 PM"
     }
   ]
 }

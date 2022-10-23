@@ -6,6 +6,13 @@ const recordController = require("../../controllers/recordController");
 const router = express.Router();
 const cache = apicache.middleware;
 
+/*
+// Custom made middlewares
+ const authenticate = require("../../middlewares/authenticate");
+const authorize = require("../../middlewares/authorize");
+
+router.post("/", authenticate, authorize, workoutController.createNewWorkout);
+ */
 // cache a single route
 router.get("/", cache("2 minutes"), workoutController.getAllWorkouts);
 

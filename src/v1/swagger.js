@@ -7,10 +7,10 @@ const options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "Crossfit WOD API",
+      title: "Legion Training Platform",
       version: "1.0.0",
       description:
-        "A simple API for managing CrossFit workouts, members, and workout records.",
+        "Legion is a multi-tenant training platform for gyms and coaches to orchestrate workouts, track progress, and manage athletes.",
     },
   },
   apis: ["./src/v1/routes/*.js", "./src/database/*.js"],
@@ -29,7 +29,7 @@ const swaggerDocs = (app, port) => {
     res.send(swaggerSpec);
   });
   console.log(
-    `Version 1 Docs are available on http://localhost:${port}/api/v1/docs`
+    `Legion API docs are available at http://localhost:${port}/api/v1/docs`
   );
 };
 

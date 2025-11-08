@@ -1,7 +1,7 @@
 {
-  "name": "crossfit-wod-api",
+  "name": "legion-training-api",
   "version": "1.0.0",
-  "description": "",
+  "description": "Legion: multi-tenant training and coaching API",
   "main": "index.js",
   "scripts": {
     "test": "jest --runInBand",
@@ -11,7 +11,7 @@
     "type": "git",
     "url": "git+https://github.com/TaulantSela/crossfit-wod-api.git"
   },
-  "keywords": [],
+  "keywords": ["training", "workout", "legion", "coach"],
   "author": "",
   "license": "ISC",
   "bugs": {

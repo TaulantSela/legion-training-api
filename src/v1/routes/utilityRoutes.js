@@ -5,6 +5,19 @@ const router = express.Router();
 
 /**
  * @openapi
+ * /api/v1/:
+ *   get:
+ *     summary: Legion API overview and quick-start instructions
+ *     tags:
+ *       - Utilities
+ *     responses:
+ *       200:
+ *         description: HTML introduction
+ */
+router.get("/", utilityController.getRootOverview);
+
+/**
+ * @openapi
  * /api/v1/healthz:
  *   get:
  *     summary: Health check for the Legion API

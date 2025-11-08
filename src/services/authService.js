@@ -3,8 +3,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../database/User");
 
-const JWT_SECRET = process.env.JWT_SECRET || "legion-dev-secret";
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h";
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN;
 const ALLOWED_ROLES = ["coach", "athlete", "admin"];
 
 const sanitizeUser = (user) => {

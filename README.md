@@ -9,9 +9,10 @@ Legion is an Express-based platform for gyms, coaches, and personal trainers to 
 - Authentication with JWTs, role-aware permissions (`coach`, `athlete`, `admin`)
 - Swagger 3.0 docs exposed at `/api/v1/docs`
 - Integration tests covering workouts, members, records, and utilities with Jest + Supertest
+- Root introduction page with quick-start instructions at `/` (and `/api`)
 
 ## Environment
-Create a `.env` file (or export env vars) to configure secrets.
+Create a `.env` file (or export env vars) to configure secrets. See `config/env.example` for a template.
 ```
 JWT_SECRET=super-secret-value
 JWT_EXPIRES_IN=2h

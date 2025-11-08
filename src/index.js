@@ -2,11 +2,16 @@ require("dotenv").config();
 const { app, initDocs } = require("./app");
 
 const PORT = process.env.PORT || 3000;
+const isVercel = ["1", "true", "TRUE"].includes(process.env.VERCEL);
 
-app.listen(PORT, () => {
-  console.log(`Legion API is listening on port ${PORT}`);
+if (!isVercel) {
   initDocs(PORT);
-});
+  app.listen(PORT, () => {
+    console.log(`Legion API is listening on port ${PORT}`);
+  });
+}
+
+module.exports = app;
 
 /* 
 CACHE 

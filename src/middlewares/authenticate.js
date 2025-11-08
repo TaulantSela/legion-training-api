@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../database/User");
 
-const JWT_SECRET = process.env.JWT_SECRET || "legion-dev-secret";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const authenticate = (req, res, next) => {
   const authHeader = req.headers.authorization || "";

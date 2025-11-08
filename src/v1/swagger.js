@@ -1,6 +1,5 @@
 // In src/v1/swagger.js
 const swaggerJSDoc = require("swagger-jsdoc");
-const swaggerUi = require("swagger-ui-express");
 
 // Basic Meta Informations about our API
 const options = {
@@ -28,15 +27,45 @@ const options = {
 // Docs in JSON format
 const swaggerSpec = swaggerJSDoc(options);
 
+const swaggerHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Legion Training Platform</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js" crossorigin></script>
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js" crossorigin></script>
+    <script>
+      window.onload = function () {
+        window.ui = SwaggerUIBundle({
+          url: '/api/v1/docs.json',
+          dom_id: '#swagger-ui',
+          presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+          layout: 'BaseLayout',
+          deepLinking: true,
+        });
+      };
+    </script>
+  </body>
+</html>`;
+
 // Function to setup our docs
 const swaggerDocs = (app, port) => {
-  // Route-Handler to visit our docs
-  app.use("/api/v1/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-  // Make our docs in JSON format available
+  app.get("/api/v1/docs", (req, res) => {
+    res.setHeader("Content-Type", "text/html");
+    res.send(swaggerHtml);
+  });
+
+  // Keep legacy JSON endpoint
   app.get("/api/v1/docs.json", (req, res) => {
     res.setHeader("Content-Type", "application/json");
     res.send(swaggerSpec);
   });
+
   console.log(
     `Legion API docs are available at http://localhost:${port}/api/v1/docs`
   );

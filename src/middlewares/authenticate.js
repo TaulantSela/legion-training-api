@@ -3,7 +3,7 @@ const User = require("../database/User");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-const authenticate = (req, res, next) => {
+const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization || "";
   const [scheme, token] = authHeader.split(" ");
 
@@ -17,7 +17,7 @@ const authenticate = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = User.getOneUser(decoded.sub);
+    const user = await User.getOneUser(decoded.sub);
     req.user = {
       id: user.id,
       role: user.role,

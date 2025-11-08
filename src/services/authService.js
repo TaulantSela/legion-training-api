@@ -21,7 +21,7 @@ const generateToken = (user) => {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 };
 
-const registerUser = ({ email, password, role = "athlete", organizationId, name }) => {
+const registerUser = async ({ email, password, role = "athlete", organizationId, name }) => {
   if (!email || !password) {
     throw {
       status: 400,
@@ -46,7 +46,7 @@ const registerUser = ({ email, password, role = "athlete", organizationId, name 
     name: name || null,
   };
 
-  const createdUser = User.createUser(userToInsert);
+  const createdUser = await User.createUser(userToInsert);
   const token = generateToken(createdUser);
 
   return {
@@ -55,7 +55,7 @@ const registerUser = ({ email, password, role = "athlete", organizationId, name 
   };
 };
 
-const loginUser = ({ email, password }) => {
+const loginUser = async ({ email, password }) => {
   if (!email || !password) {
     throw {
       status: 400,
@@ -63,7 +63,7 @@ const loginUser = ({ email, password }) => {
     };
   }
 
-  const existingUser = User.findByEmail(email);
+  const existingUser = await User.findByEmail(email);
   if (!existingUser) {
     throw {
       status: 401,

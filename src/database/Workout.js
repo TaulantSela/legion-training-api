@@ -1,7 +1,6 @@
 // In src/database/Workout.js
 const { randomInt } = require("crypto");
-const DB = require("./db.json");
-const { saveToDatabase } = require("./utils");
+const prisma = require("./client");
 
 /**
  * @openapi
@@ -113,120 +112,102 @@ const { saveToDatabase } = require("./utils");
  */
 
 const SUPPORTED_SORT_FIELDS = ["name", "mode", "createdAt", "updatedAt"];
-const DATE_FIELDS = new Set(["createdAt", "updatedAt"]);
-
-const toNumberIfDate = (value) => {
-  const timestamp = new Date(value).getTime();
-  return Number.isNaN(timestamp) ? 0 : timestamp;
-};
 
 const normalize = (value) =>
   typeof value === "string" ? value.trim().toLowerCase() : value;
 
-const getAllWorkouts = (filterParams = {}) => {
-  const { mode, equipment, length, page, sort } = filterParams;
+const buildOrderBy = (sort) => {
+  if (!sort) return undefined;
+  const sortFieldRaw = sort.trim();
+  const direction = sortFieldRaw.startsWith("-") ? "desc" : "asc";
+  const field = direction === "desc" ? sortFieldRaw.slice(1) : sortFieldRaw;
+
+  if (!SUPPORTED_SORT_FIELDS.includes(field)) {
+    throw {
+      status: 400,
+      message: `Sort parameter '${field}' is not supported`,
+    };
+  }
+
+  return [{ [field]: direction }];
+};
+
+const buildWhereClause = ({ mode, equipment } = {}) => {
+  const where = {};
+
+  if (mode) {
+    where.mode = { contains: mode, mode: "insensitive" };
+  }
+
+  if (equipment) {
+    const filters = equipment
+      .split(",")
+      .map((item) => normalize(item))
+      .filter(Boolean);
+
+    if (filters.length) {
+      where.equipment = { hasEvery: filters };
+    }
+  }
+
+  return where;
+};
+
+const getPagination = ({ length, page }) => {
+  let take;
+  if (length !== undefined) {
+    take = parseInt(length, 10);
+    if (Number.isNaN(take) || take <= 0) {
+      throw {
+        status: 400,
+        message: "Query parameter 'length' must be a positive integer",
+      };
+    }
+  }
+
+  let pageNumber;
+  if (page !== undefined) {
+    pageNumber = parseInt(page, 10);
+    if (Number.isNaN(pageNumber) || pageNumber <= 0) {
+      throw {
+        status: 400,
+        message: "Query parameter 'page' must be a positive integer",
+      };
+    }
+  }
+
+  if (pageNumber) {
+    const effectiveTake = take ?? 10;
+    const skip = (pageNumber - 1) * effectiveTake;
+    return { take: effectiveTake, skip };
+  }
+
+  return { take, skip: undefined };
+};
+
+const getAllWorkouts = async (filterParams = {}) => {
   try {
-    let workouts = [...DB.workouts];
+    const where = buildWhereClause(filterParams);
+    const orderBy = buildOrderBy(filterParams.sort);
+    const pagination = getPagination(filterParams);
 
-    if (mode) {
-      const normalizedMode = mode.toLowerCase();
-      workouts = workouts.filter((workout) =>
-        workout.mode.toLowerCase().includes(normalizedMode)
-      );
-    }
-
-    if (equipment) {
-      const equipmentFilters = equipment
-        .split(",")
-        .map((item) => item.trim().toLowerCase())
-        .filter(Boolean);
-
-      if (equipmentFilters.length) {
-        workouts = workouts.filter((workout) => {
-          const workoutEquipment = (workout.equipment || []).map((item) =>
-            item.toLowerCase()
-          );
-          return equipmentFilters.every((needle) =>
-            workoutEquipment.includes(needle)
-          );
-        });
-      }
-    }
-
-    if (sort) {
-      const sortFieldRaw = sort.trim();
-      const sortDirection = sortFieldRaw.startsWith("-") ? -1 : 1;
-      const sortField =
-        sortDirection === -1 ? sortFieldRaw.slice(1) : sortFieldRaw;
-
-      if (!SUPPORTED_SORT_FIELDS.includes(sortField)) {
-        throw {
-          status: 400,
-          message: `Sort parameter '${sortField}' is not supported`,
-        };
-      }
-
-      workouts.sort((first, second) => {
-        const firstValue = DATE_FIELDS.has(sortField)
-          ? toNumberIfDate(first[sortField])
-          : normalize(first[sortField]);
-        const secondValue = DATE_FIELDS.has(sortField)
-          ? toNumberIfDate(second[sortField])
-          : normalize(second[sortField]);
-
-        if (firstValue === undefined && secondValue === undefined) return 0;
-        if (firstValue === undefined) return 1 * sortDirection;
-        if (secondValue === undefined) return -1 * sortDirection;
-
-        if (DATE_FIELDS.has(sortField)) {
-          return (firstValue - secondValue) * sortDirection;
-        }
-
-        if (firstValue === secondValue) return 0;
-        return firstValue > secondValue ? 1 * sortDirection : -1 * sortDirection;
-      });
-    }
-
-    let limit;
-    if (length !== undefined) {
-      limit = parseInt(length, 10);
-      if (Number.isNaN(limit) || limit <= 0) {
-        throw {
-          status: 400,
-          message: "Query parameter 'length' must be a positive integer",
-        };
-      }
-    }
-
-    let pageNumber;
-    if (page !== undefined) {
-      pageNumber = parseInt(page, 10);
-      if (Number.isNaN(pageNumber) || pageNumber <= 0) {
-        throw {
-          status: 400,
-          message: "Query parameter 'page' must be a positive integer",
-        };
-      }
-    }
-
-    if (pageNumber) {
-      const effectiveLimit = limit ?? 10;
-      const startIndex = (pageNumber - 1) * effectiveLimit;
-      const endIndex = startIndex + effectiveLimit;
-      workouts = workouts.slice(startIndex, endIndex);
-    } else if (limit) {
-      workouts = workouts.slice(0, limit);
-    }
+    const workouts = await prisma.workout.findMany({
+      where,
+      orderBy,
+      take: pagination.take,
+      skip: pagination.skip,
+    });
 
     return workouts;
   } catch (error) {
+    if (error?.status) throw error;
     throw { status: error?.status || 500, message: error?.message || error };
   }
 };
 
-const getOneWorkout = (workoutId) => {
+const getOneWorkout = async (workoutId) => {
   try {
-    const workout = DB.workouts.find((workout) => workout.id === workoutId);
+    const workout = await prisma.workout.findUnique({ where: { id: workoutId } });
     if (!workout) {
       throw {
         status: 404,
@@ -235,13 +216,14 @@ const getOneWorkout = (workoutId) => {
     }
     return workout;
   } catch (error) {
+    if (error?.status) throw error;
     throw { status: error?.status || 500, message: error?.message || error };
   }
 };
 
-const getRandomWorkout = (filterParams = {}) => {
+const getRandomWorkout = async (filterParams = {}) => {
   try {
-    const candidates = getAllWorkouts(filterParams);
+    const candidates = await getAllWorkouts(filterParams);
     if (!candidates.length) {
       throw {
         status: 404,
@@ -251,90 +233,78 @@ const getRandomWorkout = (filterParams = {}) => {
     const index = randomInt(0, candidates.length);
     return candidates[index];
   } catch (error) {
+    if (error?.status) throw error;
     throw { status: error?.status || 500, message: error?.message || error };
   }
 };
 
-const createNewWorkout = (newWorkout) => {
+const createNewWorkout = async (newWorkout) => {
   try {
-    const normalizedName = newWorkout.name.trim().toLowerCase();
-    const isAlreadyAdded = DB.workouts.some(
-      (workout) => workout.name.trim().toLowerCase() === normalizedName
-    );
-    if (isAlreadyAdded) {
+    const createdWorkout = await prisma.workout.create({
+      data: {
+        id: newWorkout.id,
+        name: newWorkout.name,
+        mode: newWorkout.mode || null,
+        equipment: newWorkout.equipment || [],
+        exercises: newWorkout.exercises || [],
+        trainerTips: newWorkout.trainerTips || [],
+        createdAt: newWorkout.createdAt || null,
+        updatedAt: newWorkout.updatedAt || null,
+      },
+    });
+    return createdWorkout;
+  } catch (error) {
+    if (error.code === "P2002") {
       throw {
         status: 400,
         message: `Workout with the name '${newWorkout.name}' already exists`,
       };
     }
-    DB.workouts.push(newWorkout);
-    saveToDatabase(DB);
-    return newWorkout;
-  } catch (error) {
     throw { status: error?.status || 500, message: error?.message || error };
   }
 };
 
-const updateOneWorkout = (workoutId, changes) => {
+const updateOneWorkout = async (workoutId, changes) => {
   try {
-    const indexForUpdate = DB.workouts.findIndex(
-      (workout) => workout.id === workoutId
-    );
-    if (indexForUpdate === -1) {
-      throw {
-        status: 404,
-        message: `Can't find workout with the id '${workoutId}'`,
-      };
-    }
-
-    const sanitizedChanges = { ...changes };
-    delete sanitizedChanges.id;
-    delete sanitizedChanges.createdAt;
-    delete sanitizedChanges.updatedAt;
-
-    if (sanitizedChanges.name) {
-      const normalizedName = sanitizedChanges.name.trim().toLowerCase();
-      const duplicateName = DB.workouts.some(
-        (workout) =>
-          workout.id !== workoutId &&
-          workout.name.trim().toLowerCase() === normalizedName
-      );
-      if (duplicateName) {
-        throw {
-          status: 400,
-          message: `Workout with the name '${sanitizedChanges.name}' already exists`,
-        };
-      }
-    }
-
-    const updatedWorkout = {
-      ...DB.workouts[indexForUpdate],
-      ...sanitizedChanges,
-      updatedAt: new Date().toLocaleString("en-US", { timeZone: "UTC" }),
-    };
-
-    DB.workouts[indexForUpdate] = updatedWorkout;
-    saveToDatabase(DB);
+    const updatedWorkout = await prisma.workout.update({
+      where: { id: workoutId },
+      data: {
+        name: changes.name ?? undefined,
+        mode: changes.mode ?? undefined,
+        equipment: changes.equipment ?? undefined,
+        exercises: changes.exercises ?? undefined,
+        trainerTips: changes.trainerTips ?? undefined,
+        updatedAt: changes.updatedAt ?? new Date().toISOString(),
+      },
+    });
     return updatedWorkout;
   } catch (error) {
-    throw { status: error?.status || 500, message: error?.message || error };
-  }
-};
-
-const deleteOneWorkout = (workoutId) => {
-  try {
-    const indexForDeletion = DB.workouts.findIndex(
-      (workout) => workout.id === workoutId
-    );
-    if (indexForDeletion === -1) {
+    if (error.code === "P2025") {
       throw {
         status: 404,
         message: `Can't find workout with the id '${workoutId}'`,
       };
     }
-    DB.workouts.splice(indexForDeletion, 1);
-    saveToDatabase(DB);
+    if (error.code === "P2002" && changes.name) {
+      throw {
+        status: 400,
+        message: `Workout with the name '${changes.name}' already exists`,
+      };
+    }
+    throw { status: error?.status || 500, message: error?.message || error };
+  }
+};
+
+const deleteOneWorkout = async (workoutId) => {
+  try {
+    await prisma.workout.delete({ where: { id: workoutId } });
   } catch (error) {
+    if (error.code === "P2025") {
+      throw {
+        status: 404,
+        message: `Can't find workout with the id '${workoutId}'`,
+      };
+    }
     throw { status: error?.status || 500, message: error?.message || error };
   }
 };

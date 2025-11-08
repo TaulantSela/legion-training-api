@@ -1,58 +1,58 @@
 const { v4: uuid } = require("uuid");
 const Record = require("../database/Record");
 
-const getAllRecords = (filters) => {
+const getAllRecords = async (filters) => {
   try {
-    const records = Record.getAllRecords(filters);
+    const records = await Record.getAllRecords(filters);
     return records;
   } catch (error) {
     throw error;
   }
 };
 
-const getRecordForWorkout = (workoutId) => {
+const getRecordForWorkout = async (workoutId) => {
   try {
-    const record = Record.getRecordForWorkout(workoutId);
+    const record = await Record.getRecordForWorkout(workoutId);
     return record;
   } catch (error) {
     throw error;
   }
 };
 
-const getOneRecord = (recordId) => {
+const getOneRecord = async (recordId) => {
   try {
-    const record = Record.getOneRecord(recordId);
+    const record = await Record.getOneRecord(recordId);
     return record;
   } catch (error) {
     throw error;
   }
 };
 
-const createNewRecord = (newRecord) => {
+const createNewRecord = async (newRecord) => {
   const recordToInsert = {
     ...newRecord,
     id: uuid(),
   };
   try {
-    const createdRecord = Record.createNewRecord(recordToInsert);
+    const createdRecord = await Record.createNewRecord(recordToInsert);
     return createdRecord;
   } catch (error) {
     throw error;
   }
 };
 
-const updateOneRecord = (recordId, changes) => {
+const updateOneRecord = async (recordId, changes) => {
   try {
-    const updatedRecord = Record.updateOneRecord(recordId, changes);
+    const updatedRecord = await Record.updateOneRecord(recordId, changes);
     return updatedRecord;
   } catch (error) {
     throw error;
   }
 };
 
-const deleteOneRecord = (recordId) => {
+const deleteOneRecord = async (recordId) => {
   try {
-    Record.deleteOneRecord(recordId);
+    await Record.deleteOneRecord(recordId);
   } catch (error) {
     throw error;
   }

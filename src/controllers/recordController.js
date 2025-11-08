@@ -1,9 +1,9 @@
 const recordService = require("../services/recordService");
 
-const getAllRecords = (req, res) => {
+const getAllRecords = async (req, res) => {
   const { memberId, workoutId } = req.query;
   try {
-    const records = recordService.getAllRecords({ memberId, workoutId });
+    const records = await recordService.getAllRecords({ memberId, workoutId });
     res.send({ status: "OK", data: records });
   } catch (error) {
     res.status(error?.status || 500).send({
@@ -13,7 +13,7 @@ const getAllRecords = (req, res) => {
   }
 };
 
-const getRecordForWorkout = (req, res) => {
+const getRecordForWorkout = async (req, res) => {
   const {
     params: { workoutId },
   } = req;
@@ -25,7 +25,7 @@ const getRecordForWorkout = (req, res) => {
     return;
   }
   try {
-    const record = recordService.getRecordForWorkout(workoutId);
+    const record = await recordService.getRecordForWorkout(workoutId);
     res.send({ status: "OK", data: record });
   } catch (error) {
     res.status(error?.status || 500).send({
@@ -35,7 +35,7 @@ const getRecordForWorkout = (req, res) => {
   }
 };
 
-const getOneRecord = (req, res) => {
+const getOneRecord = async (req, res) => {
   const {
     params: { recordId },
   } = req;
@@ -47,7 +47,7 @@ const getOneRecord = (req, res) => {
     return;
   }
   try {
-    const record = recordService.getOneRecord(recordId);
+    const record = await recordService.getOneRecord(recordId);
     res.send({ status: "OK", data: record });
   } catch (error) {
     res.status(error?.status || 500).send({
@@ -57,7 +57,7 @@ const getOneRecord = (req, res) => {
   }
 };
 
-const createNewRecord = (req, res) => {
+const createNewRecord = async (req, res) => {
   const { body } = req;
   if (!body.workout || !body.memberId || !body.record) {
     res.status(400).send({
@@ -70,11 +70,10 @@ const createNewRecord = (req, res) => {
     return;
   }
   try {
-    const createdRecord = recordService.createNewRecord({
+    const createdRecord = await recordService.createNewRecord({
       workout: body.workout,
       memberId: body.memberId,
       record: body.record,
-      member: body.member || "/members/:memberId",
     });
     res.status(201).send({ status: "OK", data: createdRecord });
   } catch (error) {
@@ -85,7 +84,7 @@ const createNewRecord = (req, res) => {
   }
 };
 
-const updateOneRecord = (req, res) => {
+const updateOneRecord = async (req, res) => {
   const {
     params: { recordId },
     body,
@@ -105,7 +104,7 @@ const updateOneRecord = (req, res) => {
     return;
   }
   try {
-    const updatedRecord = recordService.updateOneRecord(recordId, body);
+    const updatedRecord = await recordService.updateOneRecord(recordId, body);
     res.send({ status: "OK", data: updatedRecord });
   } catch (error) {
     res.status(error?.status || 500).send({
@@ -115,7 +114,7 @@ const updateOneRecord = (req, res) => {
   }
 };
 
-const deleteOneRecord = (req, res) => {
+const deleteOneRecord = async (req, res) => {
   const {
     params: { recordId },
   } = req;
@@ -127,7 +126,7 @@ const deleteOneRecord = (req, res) => {
     return;
   }
   try {
-    recordService.deleteOneRecord(recordId);
+    await recordService.deleteOneRecord(recordId);
     res.status(204).send();
   } catch (error) {
     res.status(error?.status || 500).send({

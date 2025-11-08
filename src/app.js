@@ -7,8 +7,20 @@ const v1MemberRouter = require("./v1/routes/memberRoutes");
 const v1RecordRouter = require("./v1/routes/recordRoutes");
 const utilityController = require("./controllers/utilityController");
 const { swaggerDocs: V1SwaggerDocs } = require("./v1/swagger");
+const { ensureDatabaseSetup } = require("./database/init");
 
 const app = express();
+
+const databaseReadyPromise = ensureDatabaseSetup();
+
+app.use(async (_req, _res, next) => {
+  try {
+    await databaseReadyPromise;
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 app.use(bodyParser.json());
 app.get("/", utilityController.getRootOverview);

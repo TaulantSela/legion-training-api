@@ -17,6 +17,7 @@ Create a `.env` file (or export env vars) to configure secrets. See `config/env.
 JWT_SECRET=super-secret-value
 JWT_EXPIRES_IN=2h
 PORT=3000
+DATABASE_URL=postgres://username:password@host:5432/legion
 ```
 
 Seed credentials (password: `password` for the examples below):
@@ -46,6 +47,8 @@ All protected routes expect `Authorization: Bearer <token>` header.
 ## Getting Started
 ```bash
 npm install
+npm run prisma:push
+npm run prisma:seed
 npm run dev
 # visit http://localhost:${PORT:-3000}/api/v1/docs for API documentation
 ```

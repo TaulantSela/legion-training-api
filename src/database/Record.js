@@ -1,5 +1,9 @@
-const DB = require("./db.json");
-const { saveToDatabase } = require("./utils");
+const prisma = require("./client");
+
+const withLegacyMemberLink = (record) => ({
+  ...record,
+  member: `/members/${record.memberId}`,
+});
 
 /**
  * @openapi
@@ -22,22 +26,17 @@ const { saveToDatabase } = require("./utils");
  *           example: 11817fb1-03a1-4b4a-8d27-854ac893cf41
  */
 
-const normalize = (value) =>
-  typeof value === "string" ? value.trim().toLowerCase() : value;
-
-const getAllRecords = ({ workoutId, memberId } = {}) => {
+const getAllRecords = async ({ workoutId, memberId } = {}) => {
   try {
-    let records = [...DB.records];
+    const where = {};
+    if (workoutId) where.workoutId = workoutId;
+    if (memberId) where.memberId = memberId;
 
-    if (workoutId) {
-      records = records.filter((entry) => entry.workout === workoutId);
-    }
-
-    if (memberId) {
-      records = records.filter((entry) => entry.memberId === memberId);
-    }
-
-    return records;
+    const records = await prisma.record.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+    });
+    return records.map(withLegacyMemberLink);
   } catch (error) {
     throw {
       status: error?.status || 500,
@@ -46,17 +45,21 @@ const getAllRecords = ({ workoutId, memberId } = {}) => {
   }
 };
 
-const getRecordForWorkout = (workoutId) => {
+const getRecordForWorkout = async (workoutId) => {
   try {
-    const records = DB.records.filter((record) => record.workout === workoutId);
+    const records = await prisma.record.findMany({
+      where: { workoutId },
+      orderBy: { createdAt: "desc" },
+    });
     if (!records.length) {
       throw {
         status: 404,
         message: `Can't find records for workout with the id '${workoutId}'`,
       };
     }
-    return records;
+    return records.map(withLegacyMemberLink);
   } catch (error) {
+    if (error?.status) throw error;
     throw {
       status: error?.status || 500,
       message: error?.message || error,
@@ -64,17 +67,18 @@ const getRecordForWorkout = (workoutId) => {
   }
 };
 
-const getOneRecord = (recordId) => {
+const getOneRecord = async (recordId) => {
   try {
-    const record = DB.records.find((entry) => entry.id === recordId);
+    const record = await prisma.record.findUnique({ where: { id: recordId } });
     if (!record) {
       throw {
         status: 404,
         message: `Can't find record with the id '${recordId}'`,
       };
     }
-    return record;
+    return withLegacyMemberLink(record);
   } catch (error) {
+    if (error?.status) throw error;
     throw {
       status: error?.status || 500,
       message: error?.message || error,
@@ -82,24 +86,24 @@ const getOneRecord = (recordId) => {
   }
 };
 
-const createNewRecord = (newRecord) => {
+const createNewRecord = async (newRecord) => {
   try {
-    const duplicate = DB.records.some(
-      (entry) =>
-        entry.workout === newRecord.workout &&
-        normalize(entry.memberId) === normalize(newRecord.memberId)
-    );
-    if (duplicate) {
+    const record = await prisma.record.create({
+      data: {
+        id: newRecord.id,
+        workoutId: newRecord.workout,
+        record: newRecord.record,
+        memberId: newRecord.memberId,
+      },
+    });
+    return withLegacyMemberLink(record);
+  } catch (error) {
+    if (error.code === "P2002") {
       throw {
         status: 400,
         message: `Member '${newRecord.memberId}' already has a record for workout '${newRecord.workout}'`,
       };
     }
-
-    DB.records.push(newRecord);
-    saveToDatabase(DB);
-    return newRecord;
-  } catch (error) {
     throw {
       status: error?.status || 500,
       message: error?.message || error,
@@ -107,44 +111,41 @@ const createNewRecord = (newRecord) => {
   }
 };
 
-const updateOneRecord = (recordId, changes) => {
+const updateOneRecord = async (recordId, changes) => {
+  let existing;
   try {
-    const indexForUpdate = DB.records.findIndex((entry) => entry.id === recordId);
-    if (indexForUpdate === -1) {
+    existing = await prisma.record.findUnique({ where: { id: recordId } });
+    if (!existing) {
       throw {
         status: 404,
         message: `Can't find record with the id '${recordId}'`,
       };
     }
 
-    const sanitizedChanges = { ...changes };
-    delete sanitizedChanges.id;
+    const data = {};
+    if (changes.workout !== undefined) data.workoutId = changes.workout;
+    if (changes.record !== undefined) data.record = changes.record;
+    if (changes.memberId !== undefined) data.memberId = changes.memberId;
 
-    const nextWorkoutId = sanitizedChanges.workout || DB.records[indexForUpdate].workout;
-    const nextMemberId = sanitizedChanges.memberId || DB.records[indexForUpdate].memberId;
+    if (Object.keys(data).length === 0) {
+      return withLegacyMemberLink(existing);
+    }
 
-    const duplicate = DB.records.some(
-      (entry) =>
-        entry.id !== recordId &&
-        entry.workout === nextWorkoutId &&
-        normalize(entry.memberId) === normalize(nextMemberId)
-    );
-    if (duplicate) {
+    const record = await prisma.record.update({
+      where: { id: recordId },
+      data,
+    });
+    return withLegacyMemberLink(record);
+  } catch (error) {
+    if (error.code === "P2002") {
+      const nextMemberId = changes.memberId ?? existing?.memberId;
+      const nextWorkoutId = changes.workout ?? existing?.workoutId;
       throw {
         status: 400,
         message: `Member '${nextMemberId}' already has a record for workout '${nextWorkoutId}'`,
       };
     }
-
-    const updatedRecord = {
-      ...DB.records[indexForUpdate],
-      ...sanitizedChanges,
-    };
-
-    DB.records[indexForUpdate] = updatedRecord;
-    saveToDatabase(DB);
-    return updatedRecord;
-  } catch (error) {
+    if (error?.status) throw error;
     throw {
       status: error?.status || 500,
       message: error?.message || error,
@@ -152,18 +153,16 @@ const updateOneRecord = (recordId, changes) => {
   }
 };
 
-const deleteOneRecord = (recordId) => {
+const deleteOneRecord = async (recordId) => {
   try {
-    const indexForDeletion = DB.records.findIndex((entry) => entry.id === recordId);
-    if (indexForDeletion === -1) {
+    await prisma.record.delete({ where: { id: recordId } });
+  } catch (error) {
+    if (error.code === "P2025") {
       throw {
         status: 404,
         message: `Can't find record with the id '${recordId}'`,
       };
     }
-    DB.records.splice(indexForDeletion, 1);
-    saveToDatabase(DB);
-  } catch (error) {
     throw {
       status: error?.status || 500,
       message: error?.message || error,

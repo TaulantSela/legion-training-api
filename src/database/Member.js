@@ -1,64 +1,31 @@
-const DB = require("./db.json");
-const { saveToDatabase } = require("./utils");
+const prisma = require("./client");
 
-/**
- * @openapi
- * components:
- *   schemas:
- *     Member:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *           example: 12a410bc-849f-4e7e-bfc8-4ef283ee4b19
- *         name:
- *           type: string
- *           example: Jason Miller
- *         gender:
- *           type: string
- *           example: male
- *         dateOfBirth:
- *           type: string
- *           example: 23/04/1990
- *         email:
- *           type: string
- *           format: email
- *           example: jason@mail.com
- */
-
-const normalize = (value) =>
-  typeof value === "string" ? value.trim().toLowerCase() : value;
-
-const getAllMembers = ({ gender, email } = {}) => {
+const getAllMembers = async ({ gender, email } = {}) => {
   try {
-    let members = [...DB.members];
-
+    const where = {};
     if (gender) {
-      const normalizedGender = gender.toLowerCase();
-      members = members.filter(
-        (member) => (member.gender || "").toLowerCase() === normalizedGender
-      );
+      where.gender = { equals: gender, mode: "insensitive" };
     }
-
     if (email) {
-      const normalizedEmail = email.toLowerCase();
-      members = members.filter(
-        (member) => (member.email || "").toLowerCase() === normalizedEmail
-      );
+      where.email = { equals: email, mode: "insensitive" };
     }
 
+    const members = await prisma.member.findMany({
+      where,
+      orderBy: { name: "asc" },
+    });
     return members;
   } catch (error) {
     throw {
       status: error?.status || 500,
-      message: error?.message || error,
+      message: error?.message || error.message || error,
     };
   }
 };
 
-const getOneMember = (memberId) => {
+const getOneMember = async (memberId) => {
   try {
-    const member = DB.members.find((member) => member.id === memberId);
+    const member = await prisma.member.findUnique({ where: { id: memberId } });
     if (!member) {
       throw {
         status: 404,
@@ -67,102 +34,92 @@ const getOneMember = (memberId) => {
     }
     return member;
   } catch (error) {
+    if (error?.status) throw error;
     throw {
       status: error?.status || 500,
-      message: error?.message || error,
+      message: error?.message || error.message || error,
     };
   }
 };
 
-const createNewMember = (newMember) => {
+const createNewMember = async (newMember) => {
   try {
-    const normalizedEmail = normalize(newMember.email);
-    const isAlreadyAdded = DB.members.some(
-      (member) => normalize(member.email) === normalizedEmail
-    );
-    if (isAlreadyAdded) {
+    const createdMember = await prisma.member.create({
+      data: {
+        id: newMember.id,
+        name: newMember.name,
+        gender: newMember.gender || null,
+        dateOfBirth: newMember.dateOfBirth || null,
+        email: newMember.email,
+        password: newMember.password,
+      },
+    });
+    return createdMember;
+  } catch (error) {
+    if (error.code === "P2002") {
       throw {
         status: 400,
         message: `Member with the email '${newMember.email}' already exists`,
       };
     }
-    DB.members.push(newMember);
-    saveToDatabase(DB);
-    return newMember;
-  } catch (error) {
     throw {
       status: error?.status || 500,
-      message: error?.message || error,
+      message: error?.message || error.message || error,
     };
   }
 };
 
-const updateOneMember = (memberId, changes) => {
+const updateOneMember = async (memberId, changes) => {
   try {
-    const indexForUpdate = DB.members.findIndex(
-      (member) => member.id === memberId
-    );
-    if (indexForUpdate === -1) {
-      throw {
-        status: 404,
-        message: `Can't find member with the id '${memberId}'`,
-      };
+    const data = {};
+    if (changes.name !== undefined) data.name = changes.name;
+    if (changes.gender !== undefined) data.gender = changes.gender;
+    if (changes.dateOfBirth !== undefined) data.dateOfBirth = changes.dateOfBirth;
+    if (changes.email !== undefined) data.email = changes.email;
+    if (changes.password !== undefined) data.password = changes.password;
+
+    if (Object.keys(data).length === 0) {
+      return getOneMember(memberId);
     }
 
-    const sanitizedChanges = { ...changes };
-    delete sanitizedChanges.id;
-
-    if (sanitizedChanges.email) {
-      const normalizedEmail = normalize(sanitizedChanges.email);
-      const duplicateEmail = DB.members.some(
-        (member) =>
-          member.id !== memberId && normalize(member.email) === normalizedEmail
-      );
-      if (duplicateEmail) {
-        throw {
-          status: 400,
-          message: `Member with the email '${sanitizedChanges.email}' already exists`,
-        };
-      }
-    }
-
-    const updatedMember = {
-      ...DB.members[indexForUpdate],
-      ...sanitizedChanges,
-    };
-
-    DB.members[indexForUpdate] = updatedMember;
-    saveToDatabase(DB);
+    const updatedMember = await prisma.member.update({
+      where: { id: memberId },
+      data,
+    });
     return updatedMember;
   } catch (error) {
-    throw {
-      status: error?.status || 500,
-      message: error?.message || error,
-    };
-  }
-};
-
-const deleteOneMember = (memberId) => {
-  try {
-    const indexForDeletion = DB.members.findIndex(
-      (member) => member.id === memberId
-    );
-    if (indexForDeletion === -1) {
+    if (error.code === "P2025") {
       throw {
         status: 404,
         message: `Can't find member with the id '${memberId}'`,
       };
     }
-    DB.members.splice(indexForDeletion, 1);
-
-    // Clean up orphaned records referencing this member
-    DB.records = DB.records.filter((record) => record.memberId !== memberId);
-
-    saveToDatabase(DB);
-  } catch (error) {
+    if (error.code === "P2002" && changes.email) {
+      throw {
+        status: 400,
+        message: `Member with the email '${changes.email}' already exists`,
+      };
+    }
     throw {
       status: error?.status || 500,
-      message: error?.message || error,
+      message: error?.message || error.message || error,
+    };
+  }
+};
+
+const deleteOneMember = async (memberId) => {
+  try {
+    await prisma.member.delete({ where: { id: memberId } });
+  } catch (error) {
+    if (error.code === "P2025") {
+      throw {
+        status: 404,
+        message: `Can't find member with the id '${memberId}'`,
+      };
+    }
+    throw {
+      status: error?.status || 500,
+      message: error?.message || error.message || error,
     };
   }
 };

@@ -2,60 +2,61 @@
 const { v4: uuid } = require("uuid");
 const Workout = require("../database/Workout");
 
-const getAllWorkouts = (filterParams) => {
+const getAllWorkouts = async (filterParams) => {
   try {
-    const allWorkouts = Workout.getAllWorkouts(filterParams);
+    const allWorkouts = await Workout.getAllWorkouts(filterParams);
     return allWorkouts;
   } catch (error) {
     throw error;
   }
 };
 
-const getOneWorkout = (workoutId) => {
+const getOneWorkout = async (workoutId) => {
   try {
-    const workout = Workout.getOneWorkout(workoutId);
+    const workout = await Workout.getOneWorkout(workoutId);
     return workout;
   } catch (error) {
     throw error;
   }
 };
 
-const getRandomWorkout = (filters) => {
+const getRandomWorkout = async (filters) => {
   try {
-    const workout = Workout.getRandomWorkout(filters);
+    const workout = await Workout.getRandomWorkout(filters);
     return workout;
   } catch (error) {
     throw error;
   }
 };
 
-const createNewWorkout = (newWorkout) => {
+const createNewWorkout = async (newWorkout) => {
+  const timestamp = new Date().toISOString();
   const workoutToInsert = {
     ...newWorkout,
     id: uuid(),
-    createdAt: new Date().toLocaleString("en-US", { timeZone: "UTC" }),
-    updatedAt: new Date().toLocaleString("en-US", { timeZone: "UTC" }),
+    createdAt: timestamp,
+    updatedAt: timestamp,
   };
   try {
-    const createdWorkout = Workout.createNewWorkout(workoutToInsert);
+    const createdWorkout = await Workout.createNewWorkout(workoutToInsert);
     return createdWorkout;
   } catch (error) {
     throw error;
   }
 };
 
-const updateOneWorkout = (workoutId, changes) => {
+const updateOneWorkout = async (workoutId, changes) => {
   try {
-    const updatedWorkout = Workout.updateOneWorkout(workoutId, changes);
+    const updatedWorkout = await Workout.updateOneWorkout(workoutId, changes);
     return updatedWorkout;
   } catch (error) {
     throw error;
   }
 };
 
-const deleteOneWorkout = (workoutId) => {
+const deleteOneWorkout = async (workoutId) => {
   try {
-    Workout.deleteOneWorkout(workoutId);
+    await Workout.deleteOneWorkout(workoutId);
   } catch (error) {
     throw error;
   }

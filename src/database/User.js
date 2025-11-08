@@ -1,9 +1,15 @@
-const DB = require("./db.json");
-const { saveToDatabase } = require("./utils");
+const prisma = require("./client");
 
-const findByEmail = (email) => {
+const findByEmail = async (email) => {
   try {
-    return DB.users.find((user) => user.email.toLowerCase() === email.toLowerCase());
+    return await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: email,
+          mode: "insensitive",
+        },
+      },
+    });
   } catch (error) {
     throw {
       status: error?.status || 500,
@@ -12,9 +18,9 @@ const findByEmail = (email) => {
   }
 };
 
-const getOneUser = (userId) => {
+const getOneUser = async (userId) => {
   try {
-    const user = DB.users.find((entry) => entry.id === userId);
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw {
         status: 404,
@@ -23,6 +29,7 @@ const getOneUser = (userId) => {
     }
     return user;
   } catch (error) {
+    if (error?.status) throw error;
     throw {
       status: error?.status || 500,
       message: error?.message || error,
@@ -30,21 +37,26 @@ const getOneUser = (userId) => {
   }
 };
 
-const createUser = (newUser) => {
+const createUser = async (newUser) => {
   try {
-    const exists = DB.users.some(
-      (entry) => entry.email.toLowerCase() === newUser.email.toLowerCase()
-    );
-    if (exists) {
+    const user = await prisma.user.create({
+      data: {
+        id: newUser.id,
+        email: newUser.email,
+        password: newUser.password,
+        role: newUser.role || null,
+        organizationId: newUser.organizationId || null,
+        name: newUser.name || null,
+      },
+    });
+    return user;
+  } catch (error) {
+    if (error.code === "P2002") {
       throw {
         status: 400,
         message: `User with the email '${newUser.email}' already exists`,
       };
     }
-    DB.users.push(newUser);
-    saveToDatabase(DB);
-    return newUser;
-  } catch (error) {
     throw {
       status: error?.status || 500,
       message: error?.message || error,

@@ -2,9 +2,15 @@
 const workoutService = require("../services/workoutService");
 
 const getAllWorkouts = (req, res) => {
-  const { mode } = req.query;
+  const { mode, equipment, length, page, sort } = req.query;
   try {
-    const allWorkouts = workoutService.getAllWorkouts({ mode });
+    const allWorkouts = workoutService.getAllWorkouts({
+      mode,
+      equipment,
+      length,
+      page,
+      sort,
+    });
     res.send({ status: "OK", data: allWorkouts });
   } catch (error) {
     res
@@ -22,6 +28,7 @@ const getOneWorkout = (req, res) => {
       status: "FAILED",
       data: { error: "Parameter ':workoutId' can not be empty" },
     });
+    return;
   }
   try {
     const workout = workoutService.getOneWorkout(workoutId);
@@ -78,6 +85,7 @@ const updateOneWorkout = (req, res) => {
       status: "FAILED",
       data: { error: "Parameter ':workoutId' can not be empty" },
     });
+    return;
   }
   try {
     const updatedWorkout = workoutService.updateOneWorkout(workoutId, body);
@@ -98,10 +106,11 @@ const deleteOneWorkout = (req, res) => {
       status: "FAILED",
       data: { error: "Parameter ':workoutId' can not be empty" },
     });
+    return;
   }
   try {
     workoutService.deleteOneWorkout(workoutId);
-    res.status(204).send({ status: "OK" });
+    res.status(204).send();
   } catch (error) {
     res
       .status(error?.status || 500)

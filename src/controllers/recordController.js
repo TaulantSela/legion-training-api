@@ -9,12 +9,13 @@ const getRecordForWorkout = (req, res) => {
       status: "FAILED",
       data: { error: "Parameter ':workoutId' can not be empty" },
     });
+    return;
   }
   try {
     const record = recordService.getRecordForWorkout(workoutId);
     res.send({ status: "OK", data: record });
   } catch (error) {
-    res.send({
+    res.status(error?.status || 500).send({
       status: "FAILED",
       data: { error: error?.message || error },
     });

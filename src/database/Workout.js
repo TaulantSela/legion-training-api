@@ -41,28 +41,185 @@ const { saveToDatabase } = require("./utils");
  *           example: ["Split the 21 thrusters as needed", "Try to do the 9 and 6 thrusters unbroken", "RX Weights: 115lb/75lb"]
  */
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     WorkoutInput:
+ *       type: object
+ *       required:
+ *         - name
+ *         - mode
+ *         - equipment
+ *         - exercises
+ *         - trainerTips
+ *       properties:
+ *         name:
+ *           type: string
+ *         mode:
+ *           type: string
+ *         equipment:
+ *           type: array
+ *           items:
+ *             type: string
+ *         exercises:
+ *           type: array
+ *           items:
+ *             type: string
+ *         trainerTips:
+ *           type: array
+ *           items:
+ *             type: string
+ *     WorkoutUpdate:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *         mode:
+ *           type: string
+ *         equipment:
+ *           type: array
+ *           items:
+ *             type: string
+ *         exercises:
+ *           type: array
+ *           items:
+ *             type: string
+ *         trainerTips:
+ *           type: array
+ *           items:
+ *             type: string
+ *     ApiResponse:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: string
+ *           example: OK
+ *         data:
+ *           description: Payload varies per endpoint
+ *     ErrorResponse:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: string
+ *           example: FAILED
+ *         data:
+ *           type: object
+ *           properties:
+ *             error:
+ *               type: string
+ *               example: Some error message
+ */
+
+const SUPPORTED_SORT_FIELDS = ["name", "mode", "createdAt", "updatedAt"];
+const DATE_FIELDS = new Set(["createdAt", "updatedAt"]);
+
+const toNumberIfDate = (value) => {
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
+
+const normalize = (value) =>
+  typeof value === "string" ? value.trim().toLowerCase() : value;
+
 const getAllWorkouts = (filterParams) => {
-  const { mode } = filterParams;
+  const { mode, equipment, length, page, sort } = filterParams;
   try {
-    let workouts = DB.workouts;
+    let workouts = [...DB.workouts];
+
     if (mode) {
-      return workouts.filter((workout) =>
-        workout.mode.toLowerCase().includes(mode)
+      const normalizedMode = mode.toLowerCase();
+      workouts = workouts.filter((workout) =>
+        workout.mode.toLowerCase().includes(normalizedMode)
       );
     }
-    // Other if-statements will go here for different parameters
-    /* 
-    Other features to be implemented:
-    * Receive all workouts that require a barbell: /api/v1/workouts?equipment=barbell
-    * Get only 5 workouts: /api/v1/workouts?length=5
-    * When using pagination, receive the second page: /api/v1/workouts?page=2
-    * Sort the workouts in the response in descending order by their creation date: /api/v1/workouts?sort=-createdAt
-    * You can also combine the parameters, to get the last 10 updated workouts for example: /api/v1/workouts?sort=-updatedAt&length=10
-     */
+
+    if (equipment) {
+      const equipmentFilters = equipment
+        .split(",")
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean);
+
+      if (equipmentFilters.length) {
+        workouts = workouts.filter((workout) => {
+          const workoutEquipment = (workout.equipment || []).map((item) =>
+            item.toLowerCase()
+          );
+          return equipmentFilters.every((needle) =>
+            workoutEquipment.includes(needle)
+          );
+        });
+      }
+    }
+
+    if (sort) {
+      const sortFieldRaw = sort.trim();
+      const sortDirection = sortFieldRaw.startsWith("-") ? -1 : 1;
+      const sortField =
+        sortDirection === -1 ? sortFieldRaw.slice(1) : sortFieldRaw;
+
+      if (!SUPPORTED_SORT_FIELDS.includes(sortField)) {
+        throw {
+          status: 400,
+          message: `Sort parameter '${sortField}' is not supported`,
+        };
+      }
+
+      workouts.sort((first, second) => {
+        const firstValue = DATE_FIELDS.has(sortField)
+          ? toNumberIfDate(first[sortField])
+          : normalize(first[sortField]);
+        const secondValue = DATE_FIELDS.has(sortField)
+          ? toNumberIfDate(second[sortField])
+          : normalize(second[sortField]);
+
+        if (firstValue === undefined && secondValue === undefined) return 0;
+        if (firstValue === undefined) return 1 * sortDirection;
+        if (secondValue === undefined) return -1 * sortDirection;
+
+        if (DATE_FIELDS.has(sortField)) {
+          return (firstValue - secondValue) * sortDirection;
+        }
+
+        if (firstValue === secondValue) return 0;
+        return firstValue > secondValue ? 1 * sortDirection : -1 * sortDirection;
+      });
+    }
+
+    let limit;
+    if (length !== undefined) {
+      limit = parseInt(length, 10);
+      if (Number.isNaN(limit) || limit <= 0) {
+        throw {
+          status: 400,
+          message: "Query parameter 'length' must be a positive integer",
+        };
+      }
+    }
+
+    let pageNumber;
+    if (page !== undefined) {
+      pageNumber = parseInt(page, 10);
+      if (Number.isNaN(pageNumber) || pageNumber <= 0) {
+        throw {
+          status: 400,
+          message: "Query parameter 'page' must be a positive integer",
+        };
+      }
+    }
+
+    if (pageNumber) {
+      const effectiveLimit = limit ?? 10;
+      const startIndex = (pageNumber - 1) * effectiveLimit;
+      const endIndex = startIndex + effectiveLimit;
+      workouts = workouts.slice(startIndex, endIndex);
+    } else if (limit) {
+      workouts = workouts.slice(0, limit);
+    }
 
     return workouts;
   } catch (error) {
-    throw { status: 500, message: error };
+    throw { status: error?.status || 500, message: error?.message || error };
   }
 };
 
@@ -71,7 +228,7 @@ const getOneWorkout = (workoutId) => {
     const workout = DB.workouts.find((workout) => workout.id === workoutId);
     if (!workout) {
       throw {
-        status: 400,
+        status: 404,
         message: `Can't find workout with the id '${workoutId}'`,
       };
     }
@@ -83,8 +240,10 @@ const getOneWorkout = (workoutId) => {
 
 const createNewWorkout = (newWorkout) => {
   try {
-    const isAlreadyAdded =
-      DB.workouts.findIndex((workout) => workout.name === newWorkout.name) > -1;
+    const normalizedName = newWorkout.name.trim().toLowerCase();
+    const isAlreadyAdded = DB.workouts.some(
+      (workout) => workout.name.trim().toLowerCase() === normalizedName
+    );
     if (isAlreadyAdded) {
       throw {
         status: 400,
@@ -101,28 +260,42 @@ const createNewWorkout = (newWorkout) => {
 
 const updateOneWorkout = (workoutId, changes) => {
   try {
-    const isAlreadyAdded =
-      DB.workouts.findIndex((workout) => workout.name === changes.name) > -1;
-    if (isAlreadyAdded) {
-      throw {
-        status: 400,
-        message: `Workout with the name '${changes.name}' already exists`,
-      };
-    }
     const indexForUpdate = DB.workouts.findIndex(
       (workout) => workout.id === workoutId
     );
     if (indexForUpdate === -1) {
       throw {
-        status: 400,
+        status: 404,
         message: `Can't find workout with the id '${workoutId}'`,
       };
     }
+
+    const sanitizedChanges = { ...changes };
+    delete sanitizedChanges.id;
+    delete sanitizedChanges.createdAt;
+    delete sanitizedChanges.updatedAt;
+
+    if (sanitizedChanges.name) {
+      const normalizedName = sanitizedChanges.name.trim().toLowerCase();
+      const duplicateName = DB.workouts.some(
+        (workout) =>
+          workout.id !== workoutId &&
+          workout.name.trim().toLowerCase() === normalizedName
+      );
+      if (duplicateName) {
+        throw {
+          status: 400,
+          message: `Workout with the name '${sanitizedChanges.name}' already exists`,
+        };
+      }
+    }
+
     const updatedWorkout = {
       ...DB.workouts[indexForUpdate],
-      ...changes,
+      ...sanitizedChanges,
       updatedAt: new Date().toLocaleString("en-US", { timeZone: "UTC" }),
     };
+
     DB.workouts[indexForUpdate] = updatedWorkout;
     saveToDatabase(DB);
     return updatedWorkout;
@@ -138,7 +311,7 @@ const deleteOneWorkout = (workoutId) => {
     );
     if (indexForDeletion === -1) {
       throw {
-        status: 400,
+        status: 404,
         message: `Can't find workout with the id '${workoutId}'`,
       };
     }

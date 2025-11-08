@@ -1,4 +1,14 @@
+const { v4: uuid } = require("uuid");
 const Record = require("../database/Record");
+
+const getAllRecords = (filters) => {
+  try {
+    const records = Record.getAllRecords(filters);
+    return records;
+  } catch (error) {
+    throw error;
+  }
+};
 
 const getRecordForWorkout = (workoutId) => {
   try {
@@ -9,4 +19,50 @@ const getRecordForWorkout = (workoutId) => {
   }
 };
 
-module.exports = { getRecordForWorkout };
+const getOneRecord = (recordId) => {
+  try {
+    const record = Record.getOneRecord(recordId);
+    return record;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const createNewRecord = (newRecord) => {
+  const recordToInsert = {
+    ...newRecord,
+    id: uuid(),
+  };
+  try {
+    const createdRecord = Record.createNewRecord(recordToInsert);
+    return createdRecord;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const updateOneRecord = (recordId, changes) => {
+  try {
+    const updatedRecord = Record.updateOneRecord(recordId, changes);
+    return updatedRecord;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const deleteOneRecord = (recordId) => {
+  try {
+    Record.deleteOneRecord(recordId);
+  } catch (error) {
+    throw error;
+  }
+};
+
+module.exports = {
+  getAllRecords,
+  getRecordForWorkout,
+  getOneRecord,
+  createNewRecord,
+  updateOneRecord,
+  deleteOneRecord,
+};

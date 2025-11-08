@@ -1,5 +1,7 @@
 const express = require("express");
 const membersController = require("../../controllers/memberController");
+const authenticate = require("../../middlewares/authenticate");
+const authorize = require("../../middlewares/authorize");
 
 const router = express.Router();
 
@@ -75,6 +77,8 @@ router.get("/", membersController.getAllMembers);
  *                 format: email
  *               password:
  *                 type: string
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       201:
  *         description: Member created
@@ -100,7 +104,12 @@ router.get("/", membersController.getAllMembers);
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
  */
-router.post("/", membersController.createNewMember);
+router.post(
+  "/",
+  authenticate,
+  authorize(["coach", "admin"]),
+  membersController.createNewMember
+);
 
 /**
  * @openapi
@@ -180,6 +189,8 @@ router.get("/:memberId", membersController.getOneMember);
  *                 format: email
  *               password:
  *                 type: string
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Member updated
@@ -211,7 +222,12 @@ router.get("/:memberId", membersController.getOneMember);
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
  */
-router.patch("/:memberId", membersController.updateOneMember);
+router.patch(
+  "/:memberId",
+  authenticate,
+  authorize(["coach", "admin"]),
+  membersController.updateOneMember
+);
 
 /**
  * @openapi
@@ -226,6 +242,8 @@ router.patch("/:memberId", membersController.updateOneMember);
  *         required: true
  *         schema:
  *           type: string
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       204:
  *         description: Member deleted
@@ -248,6 +266,11 @@ router.patch("/:memberId", membersController.updateOneMember);
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
  */
-router.delete("/:memberId", membersController.deleteOneMember);
+router.delete(
+  "/:memberId",
+  authenticate,
+  authorize(["coach", "admin"]),
+  membersController.deleteOneMember
+);
 
 module.exports = router;

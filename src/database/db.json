@@ -175,5 +175,23 @@
       "memberId": "11817fb1-03a1-4b4a-8d27-854ac893cf41",
       "member": "/members/:memberId"
     }
+  ],
+  "users": [
+    {
+      "id": "f8d2d5f6-7f1d-4e15-9f05-a6f0c4001d01",
+      "email": "coach@example.com",
+      "password": "$2a$10$CwTycUXWue0Thq9StjUM0uJ8iY1oCbcnZ6FQcmGeX1d9K/Y3Fd2u",
+      "role": "coach",
+      "organizationId": "org-1",
+      "name": "Coach Carter"
+    },
+    {
+      "id": "c2db59a3-34a2-4ee6-9d71-2c2a12273953",
+      "email": "athlete@example.com",
+      "password": "$2a$10$CwTycUXWue0Thq9StjUM0uJ8iY1oCbcnZ6FQcmGeX1d9K/Y3Fd2u",
+      "role": "athlete",
+      "organizationId": "org-1",
+      "name": "Athena Strong"
+    }
   ]
 }

@@ -20,6 +20,15 @@ const getOneWorkout = (workoutId) => {
   }
 };
 
+const getRandomWorkout = (filters) => {
+  try {
+    const workout = Workout.getRandomWorkout(filters);
+    return workout;
+  } catch (error) {
+    throw error;
+  }
+};
+
 const createNewWorkout = (newWorkout) => {
   const workoutToInsert = {
     ...newWorkout,
@@ -55,6 +64,7 @@ const deleteOneWorkout = (workoutId) => {
 module.exports = {
   getAllWorkouts,
   getOneWorkout,
+  getRandomWorkout,
   createNewWorkout,
   updateOneWorkout,
   deleteOneWorkout,

@@ -1,4 +1,5 @@
 // In src/database/Workout.js
+const { randomInt } = require("crypto");
 const DB = require("./db.json");
 const { saveToDatabase } = require("./utils");
 
@@ -122,7 +123,7 @@ const toNumberIfDate = (value) => {
 const normalize = (value) =>
   typeof value === "string" ? value.trim().toLowerCase() : value;
 
-const getAllWorkouts = (filterParams) => {
+const getAllWorkouts = (filterParams = {}) => {
   const { mode, equipment, length, page, sort } = filterParams;
   try {
     let workouts = [...DB.workouts];
@@ -238,6 +239,22 @@ const getOneWorkout = (workoutId) => {
   }
 };
 
+const getRandomWorkout = (filterParams = {}) => {
+  try {
+    const candidates = getAllWorkouts(filterParams);
+    if (!candidates.length) {
+      throw {
+        status: 404,
+        message: "No workouts found for the provided filters",
+      };
+    }
+    const index = randomInt(0, candidates.length);
+    return candidates[index];
+  } catch (error) {
+    throw { status: error?.status || 500, message: error?.message || error };
+  }
+};
+
 const createNewWorkout = (newWorkout) => {
   try {
     const normalizedName = newWorkout.name.trim().toLowerCase();
@@ -328,4 +345,5 @@ module.exports = {
   getOneWorkout,
   updateOneWorkout,
   deleteOneWorkout,
+  getRandomWorkout,
 };

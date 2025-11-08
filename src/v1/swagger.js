@@ -12,6 +12,15 @@ const options = {
       description:
         "Legion is a multi-tenant training platform for gyms and coaches to orchestrate workouts, track progress, and manage athletes.",
     },
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+        },
+      },
+    },
   },
   apis: ["./src/v1/routes/*.js", "./src/database/*.js"],
 };

@@ -2,6 +2,8 @@ const express = require("express");
 const apicache = require("apicache");
 const workoutController = require("../../controllers/workoutController");
 const recordController = require("../../controllers/recordController");
+const authenticate = require("../../middlewares/authenticate");
+const authorize = require("../../middlewares/authorize");
 
 const router = express.Router();
 const cache = apicache.middleware;
@@ -190,6 +192,8 @@ router.get("/:workoutId/records", recordController.getRecordForWorkout);
  *         application/json:
  *           schema:
  *             $ref: "#/components/schemas/WorkoutInput"
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       201:
  *         description: Workout created
@@ -215,7 +219,12 @@ router.get("/:workoutId/records", recordController.getRecordForWorkout);
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
  */
-router.post("/", workoutController.createNewWorkout);
+router.post(
+  "/",
+  authenticate,
+  authorize(["coach", "admin"]),
+  workoutController.createNewWorkout
+);
 
 /**
  * @openapi
@@ -236,6 +245,8 @@ router.post("/", workoutController.createNewWorkout);
  *         application/json:
  *           schema:
  *             $ref: "#/components/schemas/WorkoutUpdate"
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Workout updated
@@ -267,7 +278,12 @@ router.post("/", workoutController.createNewWorkout);
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
  */
-router.patch("/:workoutId", workoutController.updateOneWorkout);
+router.patch(
+  "/:workoutId",
+  authenticate,
+  authorize(["coach", "admin"]),
+  workoutController.updateOneWorkout
+);
 
 /**
  * @openapi
@@ -282,6 +298,8 @@ router.patch("/:workoutId", workoutController.updateOneWorkout);
  *         required: true
  *         schema:
  *           type: string
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       204:
  *         description: Workout deleted
@@ -304,6 +322,11 @@ router.patch("/:workoutId", workoutController.updateOneWorkout);
  *             schema:
  *               $ref: "#/components/schemas/ErrorResponse"
  */
-router.delete("/:workoutId", workoutController.deleteOneWorkout);
+router.delete(
+  "/:workoutId",
+  authenticate,
+  authorize(["coach", "admin"]),
+  workoutController.deleteOneWorkout
+);
 
 module.exports = router;

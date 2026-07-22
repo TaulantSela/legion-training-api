@@ -8,6 +8,7 @@ const v1RecordRouter = require("./v1/routes/recordRoutes");
 const utilityController = require("./controllers/utilityController");
 const { swaggerDocs: V1SwaggerDocs } = require("./v1/swagger");
 const { ensureDatabaseSetup } = require("./database/init");
+const { logoSvg } = require("./branding/logo");
 
 const app = express();
 
@@ -23,6 +24,10 @@ app.use(async (_req, _res, next) => {
 });
 
 app.use(bodyParser.json());
+app.get("/logo.svg", (_req, res) => {
+  res.type("image/svg+xml").set("Cache-Control", "public, max-age=86400").send(logoSvg);
+});
+app.get("/favicon.ico", (_req, res) => res.redirect(301, "/logo.svg"));
 app.get("/", utilityController.getRootOverview);
 app.get("/api", utilityController.getRootOverview);
 app.use("/api/v1/auth", v1AuthRouter);

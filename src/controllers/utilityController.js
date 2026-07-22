@@ -6,6 +6,7 @@ const getRootOverview = (_req, res) => {
   <head>
     <meta charset="utf-8" />
     <title>Legion Training API</title>
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
     <style>
       body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 2.5rem auto; max-width: 720px; line-height: 1.6; color: #101828; }
       h1 { font-size: 2.25rem; margin-bottom: 0.25rem; }

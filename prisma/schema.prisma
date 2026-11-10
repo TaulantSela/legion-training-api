@@ -7,45 +7,99 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  admin
+  coach
+  athlete
+}
+
+// A gym. Everything else belongs to exactly one organization.
+model Organization {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  // Athletes join with this code. Admins can rotate it.
+  inviteCode    String   @unique
+  // When true, anyone can read the workout catalogue at /api/v1/gyms/{slug}/workouts
+  publicCatalog Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  users    User[]
+  members  Member[]
+  workouts Workout[]
+  records  Record[]
+}
+
+// A login. Roles are per organization and never taken from a request body.
+model User {
+  id             String       @id @default(uuid())
+  email          String       @unique
+  passwordHash   String
+  name           String
+  role           Role
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Athletes are linked to their member profile so they can log their own results
+  memberId       String?      @unique
+  member         Member?      @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+}
+
+// An athlete profile that coaches manage. It may or may not have a login.
 model Member {
-  id          String   @id @default(uuid())
-  name        String
-  gender      String?
-  dateOfBirth String?
-  email       String   @unique
-  password    String
-  records     Record[]
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  email          String
+  gender         String?
+  dateOfBirth    DateTime?    @db.Date
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  user    User?
+  records Record[]
+
+  @@unique([organizationId, email])
+  // Lets records reference (id, organizationId), so a record can't mix gyms
+  @@unique([id, organizationId])
 }
 
 model Workout {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  mode        String?
-  equipment   String[] @default([])
-  exercises   String[] @default([])
-  trainerTips String[] @default([])
-  createdAt   String?
-  updatedAt   String?
-  records     Record[]
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  mode           String
+  equipment      String[]
+  exercises      String[]
+  trainerTips    String[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  records Record[]
+
+  @@unique([organizationId, name])
+  @@unique([id, organizationId])
 }
 
+// A member's best result for a workout, e.g. "7:23" or "358 reps"
 model Record {
-  id        String  @id @default(uuid())
-  workoutId String
-  record    String
-  memberId  String
-  createdAt DateTime @default(now())
-  workout   Workout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
-  member    Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberId       String
+  workoutId      String
+  // The composite keys make the database reject a member and workout from different gyms
+  member         Member       @relation(fields: [memberId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  workout        Workout      @relation(fields: [workoutId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  result         String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@unique([memberId, workoutId])
-}
-
-model User {
-  id             String  @id @default(uuid())
-  email          String  @unique
-  password       String
-  role           String?
-  organizationId String?
-  name           String?
+  @@index([organizationId])
+  @@index([workoutId])
 }

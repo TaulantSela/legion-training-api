@@ -1,52 +1,55 @@
 {
   "name": "legion-training-api",
-  "version": "1.0.0",
-  "description": "Legion: multi-tenant training and coaching API",
-  "main": "index.js",
+  "version": "2.0.0",
+  "description": "Legion: multi-tenant training and coaching API for gyms, coaches and athletes",
+  "private": true,
+  "main": "src/app.js",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
     "test": "jest --runInBand",
-    "dev": "nodemon src/index.js",
-    "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push",
-    "prisma:seed": "prisma db seed",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "node prisma/seed.js",
     "postinstall": "prisma generate"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TaulantSela/crossfit-wod-api.git"
+    "url": "git+https://github.com/TaulantSela/legion-training-api.git"
   },
+  "bugs": {
+    "url": "https://github.com/TaulantSela/legion-training-api/issues"
+  },
+  "homepage": "https://legion-training-api.vercel.app",
   "keywords": [
     "training",
     "workout",
-    "legion",
-    "coach"
+    "gym",
+    "coach",
+    "multi-tenant"
   ],
-  "author": "",
+  "author": "Taulant Sela",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/TaulantSela/crossfit-wod-api/issues"
-  },
-  "homepage": "https://github.com/TaulantSela/crossfit-wod-api#readme",
-  "devDependencies": {
-    "jest": "^29.7.0",
-    "nodemon": "^2.0.20",
-    "supertest": "^6.3.4"
-  },
   "dependencies": {
     "@prisma/client": "^6.19.0",
-    "apicache": "^1.6.3",
-    "bcryptjs": "^2.4.3",
-    "body-parser": "^1.20.1",
-    "dotenv": "^16.4.5",
-    "express": "^4.18.2",
-    "jsonwebtoken": "^9.0.2",
-    "pg": "^8.11.5",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.3",
     "prisma": "^6.19.0",
-    "swagger-jsdoc": "^6.2.5",
-    "swagger-ui-express": "^4.5.0",
-    "uuid": "^9.0.0"
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.1.4"
   },
   "jest": {
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "globalSetup": "<rootDir>/tests/global-setup.js",
+    "setupFiles": [
+      "<rootDir>/tests/env.js"
+    ]
   }
 }

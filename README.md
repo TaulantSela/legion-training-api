@@ -174,6 +174,16 @@ current version stays live. Keep migrations backward-compatible (add first,
 remove in a later release): the previous version keeps serving while the build
 runs.
 
+`npm run db:migrate` and `npm run db:seed` only run on a database on this
+machine (like the tests) or on one marked as a disposable dev database
+([scripts/db-guard.js](scripts/db-guard.js)), so they can't change production
+from a laptop. `legion-training-dev` is marked; production never is. To mark
+another remote dev database (never production), run this once against it:
+
+```sql
+COMMENT ON DATABASE neondb IS 'legion-training:disposable';
+```
+
 ## Tests
 
 ```bash

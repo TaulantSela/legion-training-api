@@ -165,7 +165,14 @@ Any Postgres works in place of `prisma dev`. With `prisma dev`, keep
 | `PORT` | Local port, default `3000` |
 
 Schema changes go through Prisma migrations in `prisma/migrations`, applied
-with `npm run db:migrate`.
+with `npm run db:migrate`. Production builds apply new migrations themselves: Vercel
+runs the `vercel-build` script
+([scripts/migrate-on-production-build.mjs](scripts/migrate-on-production-build.mjs)),
+which runs `prisma migrate deploy` on `VERCEL_ENV=production`, so a merged PR's
+migrations land with its code. A failing migration fails the build and the
+current version stays live. Keep migrations backward-compatible (add first,
+remove in a later release): the previous version keeps serving while the build
+runs.
 
 ## Tests
 
